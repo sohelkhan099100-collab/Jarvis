@@ -1,0 +1,38 @@
+name: Build JARVIS APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack project zip
+        run: |
+          test -f jarvis-project.zip || { echo "jarvis-project.zip not found in repo"; exit 1; }
+          mkdir build_src
+          unzip -q jarvis-project.zip -d build_src
+          ls build_src
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Build debug APK
+        working-directory: build_src
+        run: gradle assembleDebug --no-daemon --stacktrace
+      - name: Collect APK
+        run: cp build_src/app/build/outputs/apk/debug/app-debug.apk JARVIS.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-apk
+          path: JARVIS.apk
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "build-${{ github.run_number }}" JARVIS.apk --title "JARVIS build ${{ github.run_number }}" --notes "Debug APK" --target "${{ github.sha }}"
