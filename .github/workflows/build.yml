@@ -10,11 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Unpack project zip
+        with:
+          fetch-depth: 0
+      - name: Unpack newest project zip
         run: |
-          test -f jarvis-project.zip || { echo "jarvis-project.zip not found in repo"; exit 1; }
+          NEWEST=$(for f in *.zip; do echo "$(git log -1 --format=%ct -- "$f")|$f"; done | sort -t'|' -k1,1n | tail -1 | cut -d'|' -f2-)
+          echo "Using zip: $NEWEST"
+          test -n "$NEWEST" || { echo "no zip found in repo"; exit 1; }
           mkdir build_src
-          unzip -q jarvis-project.zip -d build_src
+          unzip -q "$NEWEST" -d build_src
           ls build_src
       - uses: actions/setup-java@v4
         with:
